@@ -1,0 +1,384 @@
+function FileUploader(options) {
+        if (!(this instanceof FileUploader)) {
+            return new FileUploader(options);
+        }
+        this.options = $.extend({
+            isSuccess: false
+        }, options);
+        if (!options.file) {
+            return;
+        }
+        this._build();
+        this._bindEvent();
+    }
+
+    FileUploader.prototype.setContext = function(context) {
+        this.context = context;
+    };
+
+    FileUploader.prototype.upload = function(fn) {
+        var _self = this;
+        var _options = _self.options;
+        var formData = new FormData();
+        formData.append(_options.fieldName, _options.file);
+        if (_options.data) {
+            if ($.isFunction(_options.data)) {
+                _options.data = _options.data.call(_self);
+            }
+            var keys = Object.keys(_options.data);
+            for (var idx = 0, len = keys.length, key = null; idx < len; ++idx) {
+                key = keys[idx];
+                formData.append(key, _options.data[key]);
+            }
+        }
+        var xhr = new XMLHttpRequest();
+        xhr.open('POST', _options.url + '?para=1');
+        xhr.setRequestHeader("X-CSRFToken_HW", getCookie('CSRFToken_HW'));
+        xhr.onload = function() {
+            if (4 === xhr.readyState && 200 === xhr.status) {
+                try {
+                    _options.success && $.isFunction(_options.success) && _options.success.call(_self, JSON.parse(xhr.responseText));
+                } catch (err) {
+                    var html = xhr.responseText;
+                    if (isSessionTimeOut(html)) {
+                        renderRightSide(html);
+                    }
+                }
+            } else {
+                _options.error && $.isFunction(_options.error) && _options.error.call(_self, xhr);
+            }
+            _options.$item.find('.progress').hide();
+            _options.isDone = true;
+            _options.complete && $.isFunction(_options.complete) && _options.complete.call(_self, xhr);
+            fn && $.isFunction(fn) && fn.call(_self, xhr);
+        };
+        xhr.upload.onprogress = function(event) {
+            if (event.lengthComputable) {
+                var progressValue = (event.loaded / event.total * 100 | 0);
+                _options.$item.find('.progress').css({
+                    'width': progressValue + '%'
+                });
+                _options.$item.find('.message').text(TIP_UPLOADING + '(' + progressValue + '%)');
+                _options.progress && $.isFunction(_options.progress) && _options.progress.call(_self, progressValue);
+            }
+        };
+        xhr.send(formData);
+        return _self;
+    };
+
+    FileUploader.prototype.success = function() {
+        var $item = this.options.$item;
+        this.context.increaseSuccessCount();
+        $item.removeClass('waiting').addClass('success done').find('.message').text(TIP_UPLOAD_SUCCESS).attr("title", TIP_UPLOAD_SUCCESS);
+    };
+
+    FileUploader.prototype.fail = function(error) {
+        var $item = this.options.$item;
+        this.context.increaseFailureCount();
+        $item.removeClass('waiting').addClass('fail done');
+        if (error && error.length) {
+            $item.find('.message').text(error).attr("title", error);
+        } else {
+            $item.find('.message').text(TIP_UPLOAD_FAILURE).attr("title", TIP_UPLOAD_FAILURE);
+        }
+    };
+
+    FileUploader.prototype.prepare = function() {
+        this.options.$item.addClass('waiting').find('.message').text(TIP_UPLOAD_WATING).attr("title", TIP_UPLOAD_WATING);
+    };
+    FileUploader.prototype.isDone = function() {
+        return this.options.isDone;
+    };
+
+    FileUploader.prototype.focus = function() {
+        var $this = this.options.$item,
+            $parent = $this.parent(),
+            $box = $('#ec_toneFile-filesBox'),
+            scroll = $this.offset().top - $parent.offset().top - $this.outerHeight();
+
+        $box.animate({ scrollTop: $this.offset().top - $parent.offset().top - $this.outerHeight() }, 'fast', 'swing');
+    };
+
+    FileUploader.prototype.getFileName = function() {
+        return $.trim(this.options.$item.find('.file-name').text());
+    };
+
+    FileUploader.prototype.destroy = function() {
+        this.options.$item.off('*').remove();
+    };
+
+    FileUploader.prototype._build = function() {
+        var _options = this.options;
+        if (!_options.container) {
+            return;
+        }
+        var fileName = _options.file.name;
+        fileName = fileName.substr(0, fileName.lastIndexOf('.'));
+        _options.data.fileName = fileName;
+        _options.$item = $('<div class="file-item view"></div>')
+            .append('<div class="sign"><div>')
+            .append('<div class="progress"><div>')
+            .append($('<div class="line view-line"></div>')
+                .append($('<span class="file-name"></span>').text(fileName).attr('title', fileName))
+                .append('<span class="message"></span>').append('<span class="edit-icon"></span>')
+                .append('<span class="delete-icon"></span>'))
+            .append($('<div class="line edit-line"></div')
+                .append($('<input type="text" class="item-input" maxlength="32" />').val(fileName))
+                .append($('<span class="finish-icon"></span>')))
+            .appendTo(_options.container);
+    };
+
+    FileUploader.prototype._bindEvent = function() {
+        var _self = this;
+        var _options = _self.options;
+        var $item = _options.$item;
+        $item.on('click', '.edit-icon', function() {
+            $item.addClass('edit').removeClass('view').find('.item-input').focus();
+        }).on('click', '.finish-icon', function() {
+            $item.addClass('view').removeClass('edit');
+        }).on('click', '.delete-icon', function() {
+            $item.animate({
+                opacity: 0
+            }, 'normal', function() {
+                _self.destroy();
+                if (_self.context) {
+                    _self.context.remove(_self);
+                }
+
+                var $container = $(_options.container);
+                if (!$container.find('.file-item').length) {
+                    $container.siblings('.file-error-tips.none-file').show();
+                }
+            });
+        }).on('propertychange input', '.item-input', function() {
+            var fileName = $(this).val();
+            $item.find('.file-name').text(fileName).attr('title', fileName);
+            if (!fileName.length) {
+                $item.addClass('error');
+                $item.find('.finish-icon').hide();
+            } else {
+                $item.removeClass('error');
+                $item.find('.finish-icon').show();
+            }
+        }).on('blur', '.item-input', function() {
+            if ($item.hasClass('error')) {
+                $(this).focus();
+                return;
+            }
+            $item.addClass('view').removeClass('edit');
+        });
+    };
+
+    function FileUploaderContext(fileUploaders) {
+        if (!(this instanceof FileUploaderContext)) {
+            return new FileUploaderContext(fileUploaders);
+        }
+        this.fileUploaders = fileUploaders || [];
+    }
+
+    FileUploaderContext.prototype.push = function(fileUploader) {
+        if (!(fileUploader instanceof FileUploader)) {
+            throw 'Invalid Type: the parameter is not a instance of FileUploader.';
+        }
+        fileUploader.setContext(this);
+        this.fileUploaders.push(fileUploader);
+        return this;
+    };
+
+    FileUploaderContext.prototype.remove = function(fileUploader) {
+        if (!(fileUploader instanceof FileUploader)) {
+            throw 'Invalid Type: the parameter is not a instance of FileUploader.';
+        }
+        this.fileUploaders.splice(this.fileUploaders.indexOf(fileUploader), 1);
+        return this;
+    };
+
+    FileUploaderContext.prototype.clearAll = function(fn) {
+        while (this.fileUploaders && this.fileUploaders.length) {
+            this.fileUploaders.pop().destroy();
+        }
+        fn && $.isFunction(fn) && fn.call(this);
+    };
+
+    FileUploaderContext.prototype.next = function(fn) {
+        var self = this;
+        if (!self.fileUploaders.length) {
+            fn.call(self);
+            return;
+        }
+        var fileUploader = self.fileUploaders.shift();
+        fileUploader.focus();
+        fileUploader.upload(function() {
+            self.next(fn);
+        });
+        return this;
+    };
+
+    FileUploaderContext.prototype.start = function(fn) {
+        var $buttons = $('#ec_toneFile-selectFile-btn,#ec_toneFile-determineBtn,#ec_toneFile-closePopwinIcon').addClass('disabled');
+        var fileUploaders = this.fileUploaders;
+        if (!fileUploaders.length) {
+            var noneFileTip = $("#ec_toneFile-noValidFile-tip").val().trim();
+            $('#ec_toneFile-has-wrongFile').text(noneFileTip).slideDown();
+            $buttons.removeClass('disabled');
+            return;
+        }
+        this.successCount = 0;
+        this.failureCount = 0;
+        for (var idx = 0, len = fileUploaders.length; idx < len; ++idx) {
+            fileUploaders[idx].prepare();
+        }
+        $('#ec_toneFile-has-wrongFile').slideUp(function() {
+            showBtnGrp('#ec_toneFile-loadingBtnGrp');
+            context.next(function() {
+                $buttons.removeClass('disabled');
+                fn && $.isFunction(fn) && fn.call(this);
+            });
+        });
+        return this;
+    };
+
+    FileUploaderContext.prototype.increaseSuccessCount = function() {
+        return ++this.successCount;
+    };
+
+    FileUploaderContext.prototype.getSuccessCount = function() {
+        return this.successCount;
+    };
+
+    FileUploaderContext.prototype.increaseFailureCount = function() {
+        return ++this.failureCount;
+    };
+
+    FileUploaderContext.prototype.getFailureCount = function() {
+        return this.failureCount;
+    };
+    
+    
+    $("#file-input").die("change").live('change', function() {
+        var files = this.files;
+        if (!files || !files.length) {
+            return;
+        }
+        $('#ec_toneFile-has-wrongFile').hide();
+        $('#ec_toneFile-uploadMessage').empty().hide();
+        $('#ec_toneFile-filesBox .file-item.done').remove();
+        $('#ec_toneFile-filesBox .file-error-tips').hide();
+        var invalidTypeFiles = [],
+            invalidSizeFiles = [],
+            overSizeFiles = [];
+        for (var idx = 0, len = files.length, file = null; idx < len; ++idx) {
+            file = files[idx];
+            var fileName = file.name,
+                fileSize = file.size;
+            if (20 <= context.fileUploaders.length) {
+                overSizeFiles = $.map(Array.prototype.slice.call(files, idx, len), function(file) {
+                    return file.name;
+                });
+                break;
+            }
+            if (!isWavFile(fileName)) {
+                invalidTypeFiles.push(fileName);
+                continue;
+            }
+            if (isInvalidSize(fileSize)) {
+                invalidSizeFiles.push(fileName);
+                continue;
+            }
+            context.push(new FileUploader({
+                container: '#ec_toneFile-filesBox .file-items',
+                file: file,
+                url: 'uploadVoiceFile.sraction',
+                fieldName: 'uploadFile',
+                data: function() {
+                    var data = {};
+                    data.fileDesc = '';
+                    data.fileName = this.getFileName();
+                    return data;
+                },
+                success: function(rsp) {
+                    if ('success' !== rsp.text) {
+                        this.fail(rsp.text);
+                    } else {
+                        this.success();
+                    }
+                }
+            }));
+        }
+
+        if (!context.fileUploaders.length) {
+            $('#ec_toneFile-filesBox .file-error-tips.none-file').show();
+        }
+
+        var tips = "";
+        if (invalidSizeFiles.length) {
+            tips += formateStr(TIP_INVALID_SIZE, escapeHtml(invalidSizeFiles.join(SEPARATOR)));
+        }
+        if (invalidTypeFiles.length) {
+            if (tips) {
+                tips += '<br>';
+            }
+            tips += formateStr(TIP_INVALID_TYPE, escapeHtml(invalidTypeFiles.join(SEPARATOR)));
+        }
+        if (overSizeFiles.length) {
+            if (tips) {
+                tips += '<br>';
+            }
+            tips += formateStr(TIP_OVER_FILE, escapeHtml(overSizeFiles.join(SEPARATOR)));
+        }
+        if (tips) {
+            $('#ec_toneFile-has-wrongFile').html(tips).show();
+        }
+
+        $(this).val('');
+        showBtnGrp('#ec_toneFile-uploadBtnGrp');
+    });
+    
+    //上传按钮
+    $('#ec_toneFile-uploadBtn').off('click').on('click', function(event) {
+        context.start(function() {
+            showBtnGrp('#ec_toneFile-determineBtnGrp');
+            //操作结果计数
+            var successCount = context.getSuccessCount(),
+                failureCount = context.getFailureCount(),
+                totalCount = successCount + failureCount;
+            //操作结果展示
+            $("#ec_toneFile-has-wrongFile").hide();
+            $('#ec_toneFile-uploadMessage').html(
+                formateStr(TIP_UPLOADED, createSpan(totalCount, 'total'), createSpan(successCount, 'success'), createSpan(failureCount, 'fail'))).slideDown();
+
+            function createSpan(message, className) {
+                //资源文件占位符替换
+                return formateStr('<span class="span {0}">{1}</span>', className, message);
+            }
+        });
+    });
+    
+    
+    $("#ec_toneFile-openPop").off(".pop").on("click.pop", function() {
+        if (window.FormData) {
+            $("#ec_toneFile-has-wrongFile").text("").hide();
+            $('#ec_toneFile-uploadMessage').empty().hide();
+            var language = sessionStorage.getItem("language");
+            if ("zh-CN" === language) {} else {
+                $("#ec_toneFile-selectFile-btn").removeClass("ver-middle");
+            }
+            $("#ec_toneFile-batchUploadIPT-trigger").trigger("click");
+            context.clearAll();
+            showBtnGrp('#ec_toneFile-uploadBtnGrp');
+        } else {
+            $("#ec_toneFile-singleUploadIPT-trigger").trigger("click");
+        }
+    });
+
+    var context = new FileUploaderContext([]);
+    
+    function formateDate(date) {
+        if ('[object Date]' !== Object.prototype.toString.call(date)) {
+            return;
+        }
+        var hours = date.getHours() < 10 ? '0' + date.getHours() : date.getHours();
+        var minutes = date.getMinutes() < 10 ? '0' + date.getMinutes() : date.getMinutes();
+        var seconds = date.getSeconds() < 10 ? '0' + date.getSeconds() : date.getSeconds();
+        return [date.getFullYear(), date.getMonth() + 1, date.getDate()].join('-') + ' ' + [hours, minutes, seconds].join(':');
+    }
