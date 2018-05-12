@@ -1,0 +1,475 @@
+/**
+ * Created by kWX531929 on 2018/1/11.
+ */
+$(function(win, doc, $) {
+    Vue.directive('chartLine', {
+        bind: function(el, binding) {
+            createColumnChart(el, binding.value);
+        },
+        componentUpdated: function(el, binding, vnode) {
+            if (binding.value !== binding.oldValue) {
+                createColumnChart(el, binding.value);
+            }
+        }
+    });
+    Vue.directive('date', {
+        inserted: function(el, binding, vnode) {
+            return createDate(el, binding.expression, vnode)
+        }
+    });
+    //数据上下文
+    var context = {
+        userType: $.trim($("#userType").text()),
+        corpId: '',
+        corpName: '',
+        spId: '',
+        spName: '',
+        begintime: '',
+        endtime: '',
+        timeZone: '', // 获取时区
+        tablePageSize: 24,
+        popPageSize: 10,
+        chartTitle: '',
+        pstnStatisticsData: "", //通讯查询返回数据
+        checkedRadio: 'totalCall',
+        periods: 0, //1 日 2 周 3 月
+        isShowDel: "",
+        totalCount: 0,
+    };
+    var PstnVM = new Vue({
+        el: '#PSTN-Content',
+        data: context,
+        methods: {
+            //通讯前校验
+            isCheck: function() {
+                if ($('.begintime').hasClass('error')) {
+                    return false;
+                }
+                if (this.corpName === '' && this.spName === '') {
+                    makeupError($('#pstnResourcesDetail .pstn-search'));
+                    return false;
+                }
+                return true;
+            },
+            //点击条状时间栏查询对应时间段数据
+            timeBar: function(index) {
+                //校验通过且条状日期栏可点击
+                if (!this.timeBarGray[index]) {
+                    this.periods = index
+                    this.getPstnData()
+                }
+            },
+            //radio点击切换柱状图
+            reChart: function(title, checkedRadio) {
+                this.chartTitle = title;
+                this.checkedRadio = checkedRadio;
+            },
+            //获取pstn数据
+            getPstnData: function() {
+                if (this.isCheck()) {
+                    queryPstnData(context);
+                }
+            },
+            getSpData: function(e) {
+                this.spId = '';
+                this.spName = '';
+                $('#pstn_sp_search').val('');
+                querySbSpData();
+                e = e || window.event;
+                e.stopPropagation();
+            },
+            getCorpData: function(e) {
+                this.corpId = '';
+                this.corpName = '';
+                $('#pstn_crop_search').val('');
+                querySbCorpData();
+                e = e || window.event;
+                e.stopPropagation();
+            },
+            //界面删除图标事件
+            delNameAndId: function(e) {
+                this.spId = "";
+                this.spName = "";
+                this.corpId = "";
+                this.corpName = "";
+                e = e || window.event;
+                e.stopPropagation();
+            },
+            enter: function() {
+                if (this.spId || this.corpId) {
+                    this.isShowDel = 'showDel'
+                } else {
+                    this.isShowDel = "";
+                }
+            },
+            leave: function() {
+                this.isShowDel = "";
+            }
+        },
+        computed: {
+            //图表展示数据
+            pstnChartData: function() {
+                if (this.pstnStatisticsData === "") {
+                    return {
+                        axisX: [],
+                        axisY: [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10],
+                        data: UCDX.Data.toChart([
+                            [NaN, NaN]
+                        ]),
+                        color: []
+                    }
+                } else {
+                    var axisX = getHistogram(this.pstnStatisticsData);
+                    var axisY = getYlist(getHistogram(this.pstnStatisticsData, this.checkedRadio));;
+                    var data = UCDX.Data.toChart([getHistogram(this.pstnStatisticsData, this.checkedRadio)]);;
+                    return {
+                        axisX: axisX,
+                        axisY: axisY,
+                        data: data,
+                        color: []
+                    }
+                }
+            },
+            activeBarIndex: function() {
+                return this.periods;
+            },
+            //条状灰度控制
+            timeBarGray: function() {
+                // this.checkedRadio='0';
+                this.periods = 0;
+                var TimeDifference = parseInt((new Date(this.endtime)) / 86400000, 10) - parseInt((new Date(this.begintime)) / 86400000, 10);
+                if (0 <= TimeDifference && TimeDifference < 6) {
+                    return [false, true, true];
+                } else if (6 < TimeDifference && TimeDifference < 29) {
+                    return [false, false, true];
+                } else {
+                    return [false, false, false];
+                }
+            },
+            isShowPage: function() {
+                if (this.totalCount) {
+                    return ""
+                } else {
+                    return "isShowPage"
+                }
+            }
+        },
+        mounted: function() {
+            initPopups(); //初始化弹窗
+            //设置时区
+            var timeOffset = (new Date().getTimezoneOffset()) / -60;
+            if (timeOffset >= 0) {
+                timeOffset = '+' + timeOffset;
+            }
+            context.timeZone = "GMT" + timeOffset + ':00';
+            context.chartTitle = $('#pstnResourcesDetail .ec-radio.checked').attr('title');
+            //  sp查询弹框中的保存按钮
+            $("#pstn_sp_tableyes").off("click.spn").on("click.spn", function() {
+                var spName = $("#pstn_sp_table tr.sn-curr td:eq(1)").text();
+                var spId = $("#pstn_sp_table tr.sn-curr").attr("data-spid");
+                context.spId = spId;
+                context.spName = spName;
+                clearError($('#pstnResourcesDetail .pstn-search'));
+            });
+            //  corp查询弹框中的保存按钮
+            $("#pstn_corp_tableyes").off("click.spn").on("click.spn", function() {
+                var corpName = $("#pstn-corp-box tr.sn-curr td:eq(1)").text();
+                var corpId = $("#pstn-corp-box tr.sn-curr").attr("data-corpid");
+                context.corpName = corpName;
+                context.corpId = corpId;
+                clearError($('#pstnResourcesDetail .pstn-search'));
+            });
+            $('#pstn_sp_searchicon').off('click').on('click', function() {
+                querySbSpData();
+            });
+            $('#pstn_crop_searchicon').off('click').on('click', function() {
+                querySbCorpData();
+            });
+            var tablePageSize = context.tablePageSize; // 页面每页显示数量
+            var popPageSize = context.popPageSize; // 弹窗每页显示数量
+            // // SP弹窗分页功能
+            context.widget_sbSpPop = new UCD.Pages('#pstn_sp_page', 0, popPageSize, [popPageSize, popPageSize * 2, popPageSize * 5, popPageSize * 10], 1, function() {
+                if (context.widget_sbSpPop) {
+                    querySbSpData(this._settings.page);
+                }
+            });
+            ucdWidgets.push(context.widget_sbSpPop);
+            //
+            // // 企业弹窗分页功能
+            context.widget_sbCorpPop = new UCD.Pages('#pstn_crop_page', 0, popPageSize, [popPageSize, popPageSize * 2, popPageSize * 5, popPageSize * 10], 1, function() {
+                if (context.widget_sbCorpPop) {
+                    querySbCorpData(this._settings.page);
+                }
+            });
+            ucdWidgets.push(context.widget_sbCorpPop);
+            //
+            // PSTN表格分页
+            context.widget_pstn = new UCD.Pages('#pstnStatistics_paging', 0, tablePageSize, [tablePageSize, tablePageSize * 2, tablePageSize * 3, tablePageSize * 4], 1, function() {
+                if (context.widget_pstn) {
+                    queryPstnData(context, this._settings.page);
+                }
+            });
+            ucdWidgets.push(context.widget_sb);
+            $(".search-box.softBindTX").hover(function() {
+                var $this = $(this);
+                var value = $.trim($this.find("input").val());
+                $this.find("input").val(value);
+                if (value) {
+                    $this.find(".delete-value").show();
+                }
+            }, function() {
+                $(this).find(".delete-value").hide();
+            }).on("click", ".delete-value", function(e) {
+                $(this).siblings("input").val("");
+                $(this).siblings(".search-icon").trigger("click");
+                $(this).siblings("label").show();
+                e = e || window.event;
+                e.stopPropagation();
+            }).on("keyup", "input", function(event) {
+                var e = event || window.event;
+                var keyCode = e.keyCode || e.which;
+                if (keyCode === 13) {
+                    $(this).siblings(".search-icon").trigger("click");
+                }
+            });
+        }
+    });
+    //解决初始化时，图表y轴间距问题
+    Vue.nextTick(function() {
+        createColumnChart($("#pstn-chart"), PstnVM.pstnChartData)
+    })
+
+    /* 日历初始化通用函数结合Vue
+     * param：组件容器，vue中的数据key，vue数据源
+     * 通过expression设置vnode对象中的值，vnode与当前vue对象共享数据
+     */
+    function createDate(container, expression, vnode) {
+        var $container = $(container);
+        var widget = new UCD.DatePicker($container, {
+            format: function(d) {
+                //将组件数据赋值给VUE
+                vnode.context[expression] = formateDateOnly(d);
+                return formateDateOnly(d);
+            },
+            showTime: false,
+            create: function(el, widget) {
+                var d = widget._value;
+                $(el.target).val(
+                    formateDateOnly(d)
+                );
+                //将组件数据赋值给VUE
+                vnode.context[expression] = formateDateOnly(d)
+            },
+            locale: sessionStorage.getItem('language'),
+            change: function(event, date) {
+                var $container = $(this).closest('.tab-content');
+                var $beginTimer, $endTimer;
+                if ($(this).is('.begintime')) {
+                    $beginTimer = new Date(formateDateOnly(date)).getTime();
+                    $endTimer = new Date($container.find('.endtime').val()).getTime();
+                } else {
+                    $beginTimer = new Date($container.find('.begintime').val()).getTime();
+                    $endTimer = new Date(formateDateOnly(date)).getTime();
+                }
+                if (($endTimer - $beginTimer >= 1000 * 3600 * 24 * 366)) {
+                    makeupError($container.find('.begintime'), $container.find('.endtime'));
+                    $container.find('.maxMonthLenghTip').show();
+                    setTimeout(function() {
+                        $container.find('.maxMonthLenghTip').hide();
+                    }, 2000);
+                    return;
+                } else {
+                    clearError($container.find('.begintime'), $container.find('.endtime'));
+                }
+                if (($beginTimer > $endTimer)) {
+                    makeupError($container.find('.begintime'), $container.find('.endtime'));
+                    $container.find('.beginLaterThanEndTip').show();
+                    setTimeout(function() {
+                        $container.find('.beginLaterThanEndTip').hide();
+                    }, 2000);
+                    return;
+                } else {
+                    clearError($container.find('.begintime'), $container.find('.endtime'));
+                }
+            }
+        });
+
+    }
+
+
+    /* 为弹窗中的table绑定事件
+     * param: 绑定事件的table，
+     */
+    function bindTableClick(table) {
+        $(table).off("click").on("click", "tbody tr", function() {
+            $(this).toggleClass('sn-curr').siblings().removeClass("sn-curr");
+        });
+    }
+
+    /* 系统portal下，查询SP列表
+     * param: 查询列表页数
+     */
+    function querySbSpData(page_index) {
+        var pageIndex = page_index ? page_index : "1";
+        var pageSize = context.widget_sbSpPop.getPageSize() ? context.widget_sbSpPop.getPageSize() : context.popPageSize;
+        var data = {
+            "upSpInfoQueryListVO.searchKey": $.trim($("#pstn_sp_search").val()),
+            "upSpInfoQueryListVO.pageIndex": pageIndex,
+            "upSpInfoQueryListVO.pageSize": pageSize,
+            "upSpInfoQueryListVO.ajaxPage": "switchBoard"
+        };
+        var settings = {
+            "url": "queryUpSpInfoList.sraction",
+            "data": data,
+            "targetSelector": $("#pstn_sp_table"),
+            "success": function(msg) {
+                var totalCount = $.trim($("#pstn_sp_table #CS-spTotalCount").val()); // 通讯返回总条数，需要修改
+                updatePaging(context.widget_sbSpPop, pageIndex, totalCount);
+                resetPopPosition($('#pstn-sp-box'));
+                bindTableClick($("#pstn-sp-box"));
+            }
+        };
+        requestHtml(settings);
+    }
+    /* SPportal下，查询企业列表
+     * param: 查询列表页数
+     */
+    function querySbCorpData(page_index) {
+        var pageIndex = page_index ? page_index : "1";
+        var pageSize = context.widget_sbCorpPop.getPageSize() ? context.widget_sbCorpPop.getPageSize() : context.popPageSize;
+        var data = {
+            "spCorpSearchVO.searchKey": $.trim($("#pstn_crop_search").val()),
+            "spCorpSearchVO.pageIndex": pageIndex,
+            "spCorpSearchVO.pageSize": pageSize,
+            "spCorpSearchVO.ajaxPage": "switchBoard"
+        };
+        var settings = {
+            "url": "querySpCorpList.sraction",
+            "data": data,
+            "targetSelector": $("#pstn_crop_table"),
+            "success": function(msg) {
+                var totalCount = $.trim($("#pstn_crop_table #CS-corpTotalCount").val()); // 通讯返回总条数，需要修改
+                updatePaging(context.widget_sbCorpPop, pageIndex, totalCount);
+                resetPopPosition($('#pstn-corp-box'));
+                bindTableClick($("#pstn-corp-box"));
+            }
+        };
+        requestHtml(settings);
+    }
+    /* 圆柱图初始化通用函数
+     * param: 组件容器， 组件初始化配置（数据，颜色等）
+     */
+    function createColumnChart(container, options) {
+        UCD.setColors(options.color);
+        var chart = new UCD.Column(container, options.bar, options.stacked);
+
+        chart.setData(options.data, $.noop, function(dot, index) {
+            dot.html(options.axisX[index]);
+
+        });
+        chart.setXGrid(true);
+        chart.enableLineFeed(false);
+        chart.setY1Data(options.axisY, function(dot, index) {
+            // 设置目标线
+            var val = options.axisY[index],
+                goalColor = options.goals ? options.goals[val] : undefined;
+            if (goalColor) {
+                chart.setGoal(val, dot, goalColor);
+            }
+            // 设置Y轴刻度标签
+            dot.html(val);
+
+            // 添加单位
+            if (dot.parent(".cordText").find(".unit-text").length < 1 && options.unit) {
+                dot.parent(".cordText").append($("<div class='unit-text dot'></div>"));
+                dot.parent(".cordText").find(".unit-text").text($('#main-unit').val() + options.unit);
+            }
+        });
+        chart.setLegend(options.legend);
+        chart.setOnHover(function(obj, item) {
+            var index = $(item).index();
+            var itemWidth = $(item).width(),
+                textWidth = $(item).children('.text').outerWidth();
+            $(item).children('.text').html(options.data[index].value[0]).css({
+                'top': '-28px',
+                'left': (itemWidth - textWidth) / 2
+            });
+        });
+        chart.init();
+        return chart;
+    }
+    /* 数据转换
+     * param: 图表数据
+     */
+    function converData(data) {
+        var dataStr = JSON.stringify(data);
+        return JSON.parse(dataStr);
+    }
+    /* 获取柱状图X轴Y轴数据集合
+     * param: 图表数据，对应列在图表数据中对应的key
+     */
+    function getHistogram(list, index) {
+        var newArr = [];
+        if (!index) {
+            for (var i = 0; i < list.length; i++) {
+                newArr.push(list[i].statisticPeriod)
+            }
+        } else {
+            for (i = 0; i < list.length; i++) {
+                newArr.push(parseInt((list[i][index]), 10));
+            }
+        }
+        return newArr;
+    }
+    /* Y轴不同数据下比例
+     * param: Y轴数据集合
+     */
+    function getYlist(Ylist) {
+        var MaxYnum = Math.max.apply(null, Ylist);
+        if (MaxYnum > 10) {
+            var newArrY = [];
+            for (var i = 0; i <= 10; i++) {
+                var number = parseInt(MaxYnum % 10 == 0 ? MaxYnum / 10 : MaxYnum / 10 + 1, 10);
+                newArrY.push(number * i);
+            }
+            return newArrY;
+        } else {
+            return [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+        }
+    }
+    /* 获取pstn数据
+     * param: vue数据源（请求数据），查询列表页数
+     */
+    function queryPstnData(context, page_index) {
+        var pageIndex = page_index ? page_index : "1";
+        var pageSize = context.widget_pstn.getPageSize() ? context.widget_pstn.getPageSize() : context.tablePageSize;
+        var periods = parseInt(context.periods, 10) + 1
+        var data = {
+            "pstnStatisticsVO.corpId": context.corpId, //"corp300",//context.corpId
+            "pstnStatisticsVO.spId": context.spId,
+            "pstnStatisticsVO.periods": periods,
+            "pstnStatisticsVO.timeZone": context.timeZone,
+            "pstnStatisticsVO.beginTime": context.begintime,
+            "pstnStatisticsVO.endTime": context.endtime,
+            "pstnStatisticsVO.pageIndex": pageIndex,
+            "pstnStatisticsVO.pageSize": pageSize,
+        };
+        var settings = {
+            "url": "pstnStatistics.sraction",
+            "data": data,
+            "success": function(msg) {
+                var totalCount = msg.returnMsg.totalCount;
+                context.totalCount = totalCount
+                updatePaging(context.widget_pstn, pageIndex, totalCount);
+                msg.returnMsg.data.pop(); //删除最后一条,该条为统计每列总数据
+                var pstnData = msg.returnMsg.data
+                    //生成总条数
+                for (var key in pstnData) {
+                    pstnData[key].totalCall = parseInt(pstnData[key].localCall, 10) + parseInt(pstnData[key].nationalCall, 10) + parseInt(pstnData[key].internationalCall, 10)
+                }
+                context.pstnStatisticsData = pstnData;
+            }
+        };
+        requestJson(settings);
+    }
+}(window, document, jQuery));
