@@ -1,0 +1,155 @@
+<%@ page language="java" contentType="text/html; charset=UTF-8" pageEncoding="UTF-8"%>
+<%@ taglib prefix="s" uri="/struts-tags"%>
+<%@ taglib prefix="app" uri="/WEB-INF/app.tld"%>
+<app:appResource type="css" src="resources/callLog/css/pstnStatistics.css"/>
+<div id="PSTN-Content">
+    <div class="reports">
+        <div class="reports-row">
+            <div class="reports-dateinput reports-col">
+                <!--日期选择 start-->
+                <label class="info-title content-ellipsis" title="<s:text name="UPORTAL.SPSIGNSTATISTICS.SPSIGN_RECORD.COLUM.STATISTICPERIOD" />"><s:text name="UPORTAL.SPSIGNSTATISTICS.SPSIGN_RECORD.COLUM.STATISTICPERIOD" /></label>
+                <div class="info-value">
+                    <div class="inputbox">
+                        <input class="pack-input begintime" type="text" v-date="begintime" readonly="readonly" />
+                    </div>
+                    -
+                    <div class="inputbox">
+                        <input class="pack-input endtime" type="text" v-date="endtime" readonly="readonly" />
+                    </div>
+                    <div class='caution-word maxMonthLenghTip' title="<s:text name="UPORTAL.CAllSTATISTICS.MAXMONTHLENGTH.TIPS"/>"><s:text name="UPORTAL.CAllSTATISTICS.MAXMONTHLENGTH.TIPS"/></div>
+                    <div class='caution-word beginLaterThanEndTip' title="<s:text name="UPORTAL.CAllSTATISTICS.BEGINLATERTHANEND.TIPS"/>"><s:text name="UPORTAL.CAllSTATISTICS.BEGINLATERTHANEND.TIPS"/></div>
+                </div>
+        <!--日期选择 end-->
+            </div>
+            <div class="reports-col">
+                <span class="u-gray-btn" @click="getPstnData" title="<s:text name="UPORTAL.SMSSTATISTICS.SEARCH.BUTTON"/>"><s:text name="UPORTAL.SMSSTATISTICS.SEARCH.BUTTON"/></span>
+            </div>
+        </div>
+    </div>
+
+    <!--企业及展示种类选择 start-->
+    <div id="pstnResourcesDetail">
+        <div class="reports-row">
+            <div class="reports-col">
+                <label class="info-title content-ellipsis" title="<s:text name="UPORTAL.IPTSTATISTICS.ITEMS.PARA"/>"><s:text name="UPORTAL.IPTSTATISTICS.ITEMS.PARA"/></label>
+                <label class="info-title" v-if="userType==0"><s:text name="UPORTAL.CAllSTATISTICS.ADMIN.ORGANISTION.SP.ITEM"/></label>
+                <label class="info-title" v-else><s:text name="UPORTAL.CAllSTATISTICS.ADMIN.ORGANISTION.CORP.ITEM"/></label>
+                <div class="info-value sp-search open_pop" href="#pstn-sp-box" v-if="userType==0" @click="getSpData" @mouseenter="enter" @mouseleave="leave">
+                    <div class="delete-value" :class="isShowDel" @click="delNameAndId"></div>
+                    <input class="pack-input pstn-search content-ellipsis" v-model="spName" type="text"  readonly="readonly">
+                    <span class="department-icon open_pop sp-choose-btn"></span>
+                </div>
+                <div class="info-value sp-search open_pop" href="#pstn-corp-box" v-else @click="getCorpData" @mouseenter="enter" @mouseleave="leave">
+                    <div class="delete-value" :class="isShowDel" @click="delNameAndId"></div>
+                    <input class="pack-input pstn-search content-ellipsis"  type="text" v-model="corpName" readonly="readonly">
+                    <span class="department-icon  enterprise-choose-btn"  ></span>
+                </div>
+                <div class="radio-choose-warp">
+                    <div class="radio-choose-box">
+                        <span class="ec-radio  content-ellipsis" :class="{checked:'totalCall'==checkedRadio}" @mouseup="reChart('<s:text name="UPORTAL.CALLLOG.CALL_RECORD.ITEM"/>','totalCall')" title="<s:text name="UPORTAL.CALLLOG.CALL_RECORD.ITEM"/>">
+                        <s:text name="UPORTAL.CALLLOG.CALL_RECORD.ITEM"/></span>
+                        <span class="ec-radio  content-ellipsis" :class="{checked:'localCall'==checkedRadio}" @mouseup="reChart('<s:text name="UPORTAL.CAllSTATISTICS.LOCALCALL.ITEM"/>','localCall')"  title="<s:text name="UPORTAL.CAllSTATISTICS.LOCALCALL.ITEM"/>">
+                        <s:text name="UPORTAL.CAllSTATISTICS.LOCALCALL.ITEM"/></span>
+                        <span class="ec-radio  content-ellipsis" :class="{checked:'nationalCall'==checkedRadio}" @mouseup="reChart('<s:text name="UPORTAL.CAllSTATISTICS.NATIONALTOLLCALL.ITEM"/>','nationalCall')"  title="<s:text name="UPORTAL.CAllSTATISTICS.NATIONALTOLLCALL.ITEM"/>">
+                        <s:text name="UPORTAL.CAllSTATISTICS.NATIONALTOLLCALL.ITEM"/></span>
+                        <span class="ec-radio  content-ellipsis" :class="{checked:'internationalCall'==checkedRadio}" @mouseup="reChart('<s:text name="UPORTAL.CAllSTATISTICS.INTERTOLLCALL.ITEM"/>','internationalCall')"  title="<s:text name="UPORTAL.CAllSTATISTICS.INTERTOLLCALL.ITEM"/>">
+                        <s:text name="UPORTAL.CAllSTATISTICS.INTERTOLLCALL.ITEM"/></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!--企业及展示种类选择 end-->
+    <!--柱状图容器 start-->
+    <div class="reports-row clearfix">
+        <div class="sub-chart-tools">
+            <label class="info-title content-ellipsis" :title=chartTitle>{{chartTitle}}</label>
+            <div class="btn-group">
+                <span class="content-ellipsis day" data-option="1" :class="[{notclick:timeBarGray[0]},{active:0===activeBarIndex}]" @click="timeBar(0)" title="<s:text name="UPORTAL.CAllSTATISTICS.BYDAY.BUTTON" />"><s:text name="UPORTAL.CAllSTATISTICS.BYDAY.BUTTON" /></span>
+                <span class="content-ellipsis week" data-option="2" :class="[{notclick:timeBarGray[1]},{active:1===activeBarIndex}]" @click="timeBar(1)" title="<s:text name="UPORTAL.CAllSTATISTICS.BYWEEK.BUTTON" />"><s:text name="UPORTAL.CAllSTATISTICS.BYWEEK.BUTTON" /></span>
+                <span class="content-ellipsis month" data-option="3" :class="[{notclick:timeBarGray[2]},{active:2===activeBarIndex}]" @click="timeBar(2)" title="<s:text name="UPORTAL.CAllSTATISTICS.BYMONTH.BUTTON" />"><s:text name="UPORTAL.CAllSTATISTICS.BYMONTH.BUTTON" /></span>
+            </div>
+        </div>
+        <!-- <div class="fr-box"></div> -->
+        <div class="line-chart-box line-chart" style="height:320px;" id="pstn-chart" v-chart-line="pstnChartData"></div>
+    </div>
+    <!--柱状图容器 end-->
+    <div class="line-detail">
+        <div class="detail-bar">
+            <span class="detail-operate active"><s:text name="UPORTAL.CAllSTATISTICS.EXPAND.BUTTON"/></span>
+            <span class="detail-operate"><s:text name="UPORTAL.CAllSTATISTICS.COLLAPSE.BUTTON"/></span>
+            <div class="operateImg"></div>
+        </div>
+        <div class="detail-table" style="display: none;">
+            <table class="bottom-table  showTab">
+                <thead>
+                    <tr>
+                        <th><s:text name="UPORTAL.MESSAGEREPORT.TIME.TITLE"/></th>
+                        <th v-if=userType==0><s:text name="UPORTAL.SMSSTATISTICS.POPUP_SP.TITLE"/>ID</th>
+                        <th v-else><s:text name="UPORTAL.SMSSTATISTICS.POPUP_CORP.TITLE"/>ID</th>
+                        <th v-if=userType==0><s:text name="UPORTAL.SMSSTATISTICS.POPUP_SP.SPNAME.TITLE"/></th>
+                        <th v-else><s:text name="UPORTAL.SMSSTATISTICS.POPUP_CORP.CORPNAME.TITLE"/></th>
+                        <th><s:text name="UPORTAL.CALLLOG.CALL_RECORD.ITEM"/>(<s:text name="UPORTAL.CALLLOG.CALL_RECORD.TIME.MINUTE.PARA"/>)</th>
+                        <th><s:text name="UPORTAL.CAllSTATISTICS.LOCALCALL.IN.TITLE"/>(<s:text name="UPORTAL.CALLLOG.CALL_RECORD.TIME.MINUTE.PARA"/>)</th>
+                        <th><s:text name="UPORTAL.CAllSTATISTICS.NATIONALTOLLCALL.IN.TITLE"/>(<s:text name="UPORTAL.CALLLOG.CALL_RECORD.TIME.MINUTE.PARA"/>)</th>
+                        <th><s:text name="UPORTAL.CAllSTATISTICS.INTERTOLLCALL.IN.TITLE"/>(<s:text name="UPORTAL.CALLLOG.CALL_RECORD.TIME.MINUTE.PARA"/>)</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    <tr v-for='item in pstnStatisticsData'>
+                        <td title="item.statisticPeriod">{{item.statisticPeriod}}</td>
+                        <td  v-if='userType==0' title="item.spId">{{item.spId}}</td>
+                        <td  v-if='userType==0' title="item.spName">{{item.spName}}</td>
+                        <td  v-if='userType==1' title="item.corpId">{{item.corpId}}</td>
+                        <td  v-if='userType==1' title="item.corpName">{{item.corpName}}</td>
+                        <td>{{parseInt(item.localCall,10)+parseInt(item.nationalCall,10)+parseInt(item.internationalCall,10)}}</td>
+                        <td title="item.localCall">{{item.localCall}}</td>
+                        <td title="item.nationalCall">{{item.nationalCall}}</td>
+                        <td title="item.internationalCall">{{item.internationalCall}}</td>
+                    </tr>
+                </tbody>
+            </table>
+            <div id="pstnControlPageDive" :class="isShowPage">
+                <div class="paging" id="pstnStatistics_paging"></div>
+            </div>
+        </div>
+    </div>
+    
+</div>
+<div class="u-pop-box" id="pstn-sp-box" style=" display:none">
+    <b class="pop-close close"></b>
+    <h3 class="pop-top drag-top">
+        <span class="pop-title"><s:text name="UPORTAL.CAllSTATISTICS.ADMIN.ORGANISTION.SP.ITEM" /></span>
+    </h3>
+    <div class="search-box softBindTX">
+        <label class="search-tip"><s:text name='UPORTAL.SMSSTATISTICS.POPUP_SP.PARA'/></label>
+        <div class="delete-value"  style="display: none"></div>
+        <input type="text" class="search-input" id="pstn_sp_search" maxlength="32" />
+        <span class="search-icon" id="pstn_sp_searchicon"></span>
+    </div>
+    <div id='pstn_sp_table'></div>
+    <div class="paging" id='pstn_sp_page'></div>
+    <div class="bottom-box">
+        <div id="pstn_sp_tableyes" class="u-btn close" title="<s:text name="UPORTAL.CONFIRM.BUTTON" />"><s:text name="UPORTAL.CONFIRM.BUTTON" /></div>
+        <div class="u-gray-btn close" title="<s:text name='UPORTAL.CANCEL.BUTTON' />"><s:text name="UPORTAL.CANCEL.BUTTON" /></div>
+    </div>
+</div>
+<div class="u-pop-box" id="pstn-corp-box" style=" display:none">
+    <b class="pop-close close"></b>
+    <h3 class="pop-top drag-top">
+        <span class="pop-title"><s:text name="UPORTAL.CAllSTATISTICS.ADMIN.ORGANISTION.CORP.ITEM" /></span>
+    </h3>
+    <div class="search-box softBindTX">
+        <label class="search-tip"><s:text name="UPORTAL.SMSSTATISTICS.POPUP_CORP.PARA"/></label>
+        <div class="delete-value" style="display: none"></div>
+        <input type="text" class="search-input" id="pstn_crop_search" maxlength="32" />
+        <span class="search-icon" id="pstn_crop_searchicon"></span>
+    </div>
+    <div id='pstn_crop_table'></div>
+    <div class="paging" id='pstn_crop_page'></div>
+    <div class="bottom-box">
+        <div id="pstn_corp_tableyes" class="u-btn close content-ellipsis" title="<s:text name='UPORTAL.CONFIRM.BUTTON' />"><s:text name="UPORTAL.CONFIRM.BUTTON" /></div>
+        <div class="u-gray-btn close content-ellipsis" title="<s:text name='UPORTAL.CANCEL.BUTTON' />"><s:text name="UPORTAL.CANCEL.BUTTON" /></div>
+    </div>
+</div>
+<app:appResource type="js" src="js/callLog/spmgr/callStatistics_pstn.min.js"/>
