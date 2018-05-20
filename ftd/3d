@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+ <head>
+  <title> new document </title>
+  <meta charset="utf-8">
+  <style>
+	#stage{
+		width:800px;
+		height:400px;
+		margin:0 auto;
+		border:1px solid #333;
+		perspective:1200px;
+		-webkit-perspective:1200px;
+	}
+	#container{
+		width:800px;
+		height:400px;
+		margin:0 auto;
+		border:1px solid #ddd;
+		position:relative;
+
+		transform:rotatex(-20deg) rotatey(0deg);
+		/*规定如何在3d控件中呈现被嵌套的元素
+		  flat:子元素将不保留其3d位置(默认值)
+		  preserve-3d:子元素将保留其3d位置
+		  */
+		transform-style:preserve-3d;
+	}
+	#container div{
+		width:100px;
+		height:100px;
+		background-color:#e4393c;
+		position:absolute;
+		top:150px;
+		left:350px;
+	}
+
+	#container div:nth-child(1){
+		transform:rotatey(0deg) translatez(200px);
+	}
+	#container div:nth-child(2){
+		transform:rotatey(60deg) translatez(200px);
+	}
+	#container div:nth-child(3){
+		transform:rotatey(120deg) translatez(200px);
+	}
+	#container div:nth-child(4){
+		transform:rotatey(180deg) translatez(200px);
+	}
+	#container div:nth-child(5){
+		transform:rotatey(240deg) translatez(200px);
+	}
+	#container div:nth-child(6){
+		transform:rotatey(300deg) translatez(200px);
+	}
+  </style>
+ </head>
+
+ <body>
+  <!-- 3d 舞台 -->
+  <div id="stage">
+	<div id="container">
+		<div>1</div>
+		<div>2</div>
+		<div>3</div>
+		<div>4</div>
+		<div>5</div>
+		<div>6</div>
+	</div>
+  </div>
+ </body>
+</html>
