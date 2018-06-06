@@ -1,0 +1,187 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="ie=edge">
+  <title>vue生命周期学习</title>
+  <script src="https://cdn.bootcss.com/vue/2.4.2/vue.js"></script>
+  <style>
+    .greencolor{
+      color:green;
+    }
+    .redcolor{
+      color:red;
+    }
+    .font-bolder{
+      font-weight: bolder;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">
+    <h1>{{message}}</h1>
+    <h2>每个vue的实例在被new出来的过程中经历的初始化的过程</h2>
+    <h2>new vue()--->创建--->挂载--->更新（分支） 或者 销毁（分支）---destroyed</h2>
+    <ul>
+      <li>new vue()</li>
+      <li>节点之间才是生命周期，钩子函数在调用前后的区别</li>
+      <li>所有的钩子函数并不是都执行的，初始化的时候，仅执行了beforeCreate/Created/beforeMount/mounted四个</li>
+      <li>data cahnges的时候，会执行beforeUpdate/updated钩子</li>
+      <li>当切换组件（当前组件未缓存）时，会执行beforeDestory/destroyed钩子函数</li>
+      <li>初始化和销毁时的生命钩子函数均只会执行一次，beforeUpdate/updated可多次执行</li>
+      <li>
+          <span class="redcolor">init</span> Events & LifeCycle
+      </li>
+      <li>数据观测和事件配置</li>
+      <li>数据观测：props data comouted</li>
+      <li>事件配置：watcher/event</li>
+      <li class="greencolor font-bolder">beforeCreate <span class="redcolor">钩子函数</span></li>
+      <li>
+          <span class="redcolor">init</span> injections & reactivity
+      </li>
+      <li>beforeCreate调用到created之前，不能访问到watch data methods computed上的方法和数据</li>
+      <li>数据观测 事件配置尚未完成</li>
+      <li>beforeCreate and cretaed 之间</li>
+      <li>created之前，初始化事件 进行数据观测 数据和data属性已经绑定</li>
+      <li>可用于初始化非响应式变量的值</li>
+      <li>el is undefined</li>
+      <li class="greencolor font-bolder">created <span class="redcolor">钩子函数</span>--- 此前都是初始化</li>
+      <li>
+          <span class="redcolor">compile </span>--- 有三种来源的模板需要处理
+      </li>
+      <li>首先判断对象是否有el属性，如果有就继续编译，如果没有就停止生命周期</li>
+      <li>实例上调用vm.mounted(el)</li>
+      <li>template参数对编译的影响</li>
+      <li>如果vue实例对象有template参数选项，则将其作为模板编译成render函数</li>
+      <li>如果没有，则将外部HTML作为模板编译</li>
+      <li>render函数选项 > template参数 > 外部HTML</li>
+      <li>created初始化了data，但是没有初始化el</li>
+      <li>created调用，实例创建完成</li>
+      <li>完成以下配置，数据观测 属性和方法运算 event/watch事件回调</li>
+      <li>可以调用methods中的方法</li>
+      <li>可以修改data中的数据</li>
+      <li>可以触发响应式变化</li>
+      <li>可以computed值重新计算</li>
+      <li>可以watch到值的变更</li>
+      <li>模板编译完成，未挂载到DOM，无法使用DOM的API</li>
+      <li>不能访问$el</li>
+      <li>$ref为空数组</li>
+      <li>可以用来初始化页面，简单的ajax请求</li>
+      <li>created时，页面视图未出现，请求过多可能会导致白屏</li>
+      <li class="greencolor font-bolder">beforeMount <span class="redcolor">钩子函数</span> --- 此时模板已经编译好</li>
+      <li>
+          <span class="redcolor">Create</span> vm.$el and replace 'el' with it
+      </li>
+      <li>beforeMount完成data和el的初始化</li>
+      <li>beforemount 和 mounted之间</li>
+      <li>beforemount之前el是undefined</li>
+      <li class="greencolor font-bolder">mounted <span class="redcolor">钩子函数</span></li>
+      <li>挂载 ---> 销毁</li>
+      <li>挂载 ---> 更新，只有挂载的时候才有可能更新</li>
+      <li>mounted之前和mounted之后最大的区别</li>
+      <li>之前view中还是通过插值进行占位，还是虚拟DOM的形式存在，先把坑占住，等mounted的时候渲染</li>
+      <li>之后view中的值已经被替换</li>
+      <li>mounted后，DOM可访问，$ref属性可访问到</li>
+      <li>常用来获取VNode信息和操作，ajax请求</li>
+      <li>不承诺所有子组件一起被挂载</li>
+      <li>如果期望的是所有视图都渲染完毕，可以使用vm.$nextTick</li>
+      <li>
+          when <span class="redcolor">data</span> changes
+      </li>
+      <li class="greencolor font-bolder">beforeUpdate <span class="redcolor">钩子函数</span></li>
+      <li>
+        Virtual DOM re-render and patch
+      </li>
+      <li>beforeupdate 和 updated之间</li>
+      <li>当vue发现data中的数据发生了改变，会触发对应组件的重新渲染</li>
+      <li>updated之前，beforeUpdate可以监听data的变化，但是view层没有重新渲染</li>
+      <li>updated之后，view层重新渲染</li>
+      <li>不建议在beforeUpdate这个钩子函数中操作数据</li>
+      <li>虚拟ODM patch之前</li>
+      <li>适合在更新之前访问现有DOM，可以手动移除添加的事件监听器</li>
+      <li class="greencolor font-bolder">updated <span class="redcolor">钩子函数</span></li>
+      <li>
+        when vm.$destroy() is called
+      </li>
+      <li>虚拟DOM更新和patch</li>
+      <li>同样不建议在updated这个钩子函数中操作数据</li>
+      <li class="greencolor font-bolder">beforeDestroy <span class="redcolor">钩子函数</span></li>
+      <li>
+        Teardown watchers, child components and event listeners
+      </li>
+      <li>在beforeDestroy这一步，实例仍旧可用，this仍旧指向当前实例本身</li>
+      <li>常用来销毁定时器</li>
+      <li>解绑全局事件</li>
+      <li>销毁插件对象</li>
+      <li class="greencolor font-bolder">destroyed <span class="redcolor">钩子函数</span></li>
+      <li>
+        destroyed钩子函数在实例销毁后调用，调用后，所有事件监听器会被移除，所有子实例也会被销毁
+      </li>
+    </ul>
+  </div>
+</body>
+<script>
+  var vm = new Vue({
+    el: '#app',
+    // template: "<h1>{{message +'这是在template中的'}}</h1>", //在vue配置项中修改的，有这一项和没这一项的区别
+    data: {
+      message: 'Vue的生命周期'
+    },
+    beforeCreate: function() {
+      console.group('------beforeCreate创建前状态------');
+      console.log("%c%s", "color:red" , "el     : " + this.$el); //undefined
+      console.log("%c%s", "color:red","data   : " + this.$data); //undefined
+      console.log("%c%s", "color:red","message: " + this.message)
+    },
+    created: function() {
+      console.group('------created创建完毕状态------');
+      console.log("%c%s", "color:red","el     : " + this.$el); //undefined
+      console.log("%c%s", "color:red","data   : " + this.$data); //已被初始化
+      console.log("%c%s", "color:red","message: " + this.message); //已被初始化
+    },
+    beforeMount: function() {
+      console.group('------beforeMount挂载前状态------');
+      console.log("%c%s", "color:red","el     : " + (this.$el)); //已被初始化
+      console.log(this.$el);
+      console.log("%c%s", "color:red","data   : " + this.$data); //已被初始化
+      console.log("%c%s", "color:red","message: " + this.message); //已被初始化
+    },
+    mounted: function() {
+      console.group('------mounted 挂载结束状态------');
+      console.log("%c%s", "color:red","el     : " + this.$el); //已被初始化
+      console.log(this.$el);
+      console.log("%c%s", "color:red","data   : " + this.$data); //已被初始化
+      console.log("%c%s", "color:red","message: " + this.message); //已被初始化
+    },
+    beforeUpdate: function () {
+      console.group('beforeUpdate 更新前状态===============》');
+      console.log("%c%s", "color:red","el     : " + this.$el);
+      console.log(this.$el);
+      console.log("%c%s", "color:red","data   : " + this.$data);
+      console.log("%c%s", "color:red","message: " + this.message);
+    },
+    updated: function () {
+      console.group('updated 更新完成状态===============》');
+      console.log("%c%s", "color:red","el     : " + this.$el);
+      console.log(this.$el);
+      console.log("%c%s", "color:red","data   : " + this.$data);
+      console.log("%c%s", "color:red","message: " + this.message);
+    },
+    beforeDestroy: function () {
+      console.group('beforeDestroy 销毁前状态===============》');
+      console.log("%c%s", "color:red","el     : " + this.$el);
+      console.log(this.$el);
+      console.log("%c%s", "color:red","data   : " + this.$data);
+      console.log("%c%s", "color:red","message: " + this.message);
+    },
+    destroyed: function () {
+      console.group('destroyed 销毁完成状态===============》');
+      console.log("%c%s", "color:red","el     : " + this.$el);
+      console.log(this.$el);
+      console.log("%c%s", "color:red","data   : " + this.$data);
+      console.log("%c%s", "color:red","message: " + this.message)
+    }
+  })
+</script>
+</html>
