@@ -1,0 +1,123 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="keywords" content="纯CSS3漂亮按钮，CSS3冒泡按钮" />
+<meta name="description" content="纯CSS3实现的漂亮冒泡按钮" />
+<meta name="application-name" content="CSS3漂亮冒泡按钮-彭亚欧个人博客代码中心" />
+<title>纯CSS3漂亮冒泡按钮</title>
+<style type="text/css">
+#Main {
+	width: 600px;
+	height: 500px;
+	margin: 0 auto;
+	margin-top: 50px;
+}
+#Main>p {
+	width: 100%;
+	float: left;
+	margin-top: 50px;
+}
+.button {
+	cursor: pointer;
+	font: 15px "微软雅黑", Arial, Helvetica, sans-serif;
+	-moz-border-radius: 8px;
+	-webkit-border-radius: 8px;
+	border-radius: 8px;
+	position: relative;
+	-moz-box-shadow: 0 0 3px #fff inset;
+	-webkit-box-shadow: 0 0 3px #fff inset;
+	box-shadow: 0 0 3px #fff inset;
+	margin-left: 30px;
+	background-image: url(bg.png);
+	background-repeat: no-repeat;
+	-webkit-transition: background-position 10s;
+	-moz-transition: background-position 10s;
+	transition: background-position 10s;
+}
+.button:active {
+	bottom: -1px;
+}
+.button:hover {
+	background-position: 0px -400px;
+}
+.blueBtn {
+	padding: 15px 35px 15px 35px;
+	outline: none;
+	border: 1px solid #84acc3;
+	color: #fff;
+	background-color: #61c7fb;
+}
+.blueBtnsmall, .greenBtnsmall, .hBtnsmall, .RadiuBtnsamll {
+	padding: 10px 25px 10px 25px !important;
+	margin-top: 6px;
+}
+.greenBtn {
+	padding: 15px 35px 15px 35px;
+	outline: none;
+	border: 1px solid #84acc3;
+	color: #fff;
+	background-color: #93d127;
+	-webkit-transition: background-position 5s;
+	-moz-transition: background-position 5s;
+	transition: background-position 5s;
+}
+.hBtn {
+	padding: 15px 35px 15px 35px;
+	outline: none;
+	border: 1px solid #ccc;
+	color: #fff;
+	background-color: #e9a032;
+	-webkit-transition: background-position 5s;
+	-moz-transition: background-position 5s;
+	transition: background-position 5s;
+}
+.GroupBtn {
+	padding: 15px 35px 15px 35px;
+	outline: none;
+	border: 1px solid #ccc;
+	color: #fff;
+	background-color: #65cefa;
+	-webkit-transition: background-position 3s;
+	-moz-transition: background-position 3s;
+	transition: background-position 3s;
+}
+.GroupBtnLeft {
+	-moz-border-radius: 8px 0 0 8px;
+	-webkit-border-radius: 8px 0 0 8px;
+	border-radius: 8px 0 0 8px;
+}
+.GroupBtnRight {
+	-moz-border-radius: 0 8px 8px 0;
+	-webkit-border-radius: 0 8px 8px 0;
+	border-radius: 0 8px 8px 0;
+	margin-left: -2px;
+}
+.RadiuBtn {
+	padding: 12px 35px 12px 35px;
+	outline: none;
+	border: 1px solid #ccc;
+	color: #fff;
+	background-color: #f17337;
+	-moz-border-radius: 2em;
+	-webkit-border-radius: 2em;
+	border-radius: 2em;
+	-webkit-transition: background-position 3s;
+	-moz-transition: background-position 3s;
+	transition: background-position 3s;
+}
+</style>
+</head>
+<body>
+<div id="Demo" style="text-align:center;">
+  <div id="Main">
+    <p><a class="button blueBtn">CSS3按钮</a><a class="button blueBtn blueBtnsmall">CSS3按钮</a></p>
+    <p><a class="button greenBtn">CSS3按钮</a><a class="button greenBtn greenBtnsmall">CSS3按钮</a></p>
+    <p><a class="button hBtn">CSS3按钮</a><a class="button hBtn hBtnsmall">CSS3按钮</a></p>
+    <p><a class="button GroupBtn GroupBtnLeft">CSS3按钮</a><a class="button GroupBtn GroupBtnRight">CSS3按钮</a></p>
+    <p><a class="button RadiuBtn" href="http://www.pengyaou.com/LegendsZ/File/2014/09/29/20140929113418349.html">查看源代码</a><a class="button RadiuBtn RadiuBtnsamll">CSS3按钮</a></p>
+  </div>
+</div>
+</body>
+<script type="text/javascript" src="http://www.pengyaou.com/jquery-1.4.min.js"></script>
+</html>
